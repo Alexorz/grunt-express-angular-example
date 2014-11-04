@@ -1,47 +1,41 @@
+/**
+ *      Express Server
+ */
+// var express = require('express');
+// var app = express();
+// var server = require('http').Server(app);
+//
+// app.use(function staticsPlaceholder(req, res, next) {
+//   return next();
+// });
+//
+// exports = module.exports = app;
+
+
+/**
+ *      Express & Socket Server
+ */
 var express = require('express');
-var path = require('path');
-
 var app = express();
-var passport = require('passport');
+var server = require('http').Server(app);
+var io = require('socket.io')(server);
 
-var Authentication = require('./authentication');
+// Socket server
+var imageStream = io
+    .of('/image-stream')
+    .on('connection', function (socket) {
+      socket.emit('news', { hello: 'world' });
+      socket.on('my other event', function (data) {
+        console.log(data);
+      });
+    });
 
-app.use(express.logger('dev'));
+exports = module.exports = server;
 
 // marker for `grunt-express` to inject static folder/contents
+server.use = function(){
+    app.use.apply(app, arguments);
+};
 app.use(function staticsPlaceholder(req, res, next) {
   return next();
 });
-
-app.use(express.cookieParser());
-app.use(express.session({ secret: 'i am not telling you' }));
-app.use(express.bodyParser());
-
-// Add csrf support
-app.use(express.csrf({value: Authentication.csrf}));
-app.use(function(req, res, next) {
-   res.cookie('XSRF-TOKEN', req.session._csrf);
-   next();
-});
-
-// setup passport authentication
-app.use(passport.initialize());
-app.use(passport.session());
-
-passport.use(Authentication.localStrategy);
-passport.serializeUser(Authentication.serializeUser);
-passport.deserializeUser(Authentication.deserializeUser);
-
-app.post('/login', Authentication.login);
-app.get('/logout', Authentication.logout);
-
-app.get('/user', Authentication.ensureAuthenticated, function(req, res, next) {
-  return res.json(req.session.user);
-})
-
-// mock get data routes
-app.get('/hello/:who', Authentication.ensureAuthenticated, function(req, res, next) {
-  return res.json({hello: req.params.who});
-});
-
-module.exports = app;
